@@ -12,7 +12,7 @@ export interface QueryRunnerCallbacks {
     onWarning?: (message: string) => void
     onJobId: (jobId: string) => void
     onIsQueryResult: (isQuery: boolean) => void
-    onSessionExpired?: () => void
+    onSessionExpired?: () => Promise<void> | void
     onStatementProgress?: (current: number, total: number) => void
 }
 
@@ -88,7 +88,7 @@ class FlinkQueryRunner {
                 this.setState('CANCELLED')
                 return
             }
-            this.handleError(error)
+            await this.handleError(error)
         }
     }
 
@@ -248,11 +248,17 @@ class FlinkQueryRunner {
                 if (this.cancelRequested) {
                     return
                 }
+                // Session expiry always triggers recovery, even if we have partial rows
+                if (isSessionExpired(error) && this.callbacks.onSessionExpired) {
+                    this.state = 'IDLE'
+                    await this.callbacks.onSessionExpired()
+                    return
+                }
                 if (this.allRows.length > 0) {
                     this.handleErrorMessage(error)
                     this.setState('FINISHED')
                 } else {
-                    this.handleError(error)
+                    await this.handleError(error)
                 }
                 return
             }
@@ -321,10 +327,10 @@ class FlinkQueryRunner {
         }
     }
 
-    private handleError(error: unknown): void {
+    private async handleError(error: unknown): Promise<void> {
         if (isSessionExpired(error) && this.callbacks.onSessionExpired) {
             this.state = 'IDLE'
-            this.callbacks.onSessionExpired()
+            await this.callbacks.onSessionExpired()
             return
         }
         this.handleErrorMessage(error)

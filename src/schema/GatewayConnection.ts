@@ -38,6 +38,22 @@ class GatewayConnection {
         return this.sessions.has(tabId)
     }
 
+    async validateSession(tabId: string): Promise<string | null> {
+        const sessionHandle = this.sessions.get(tabId)
+        if (!sessionHandle) return null
+        try {
+            await this.client.heartbeat(sessionHandle)
+            return sessionHandle
+        } catch (error) {
+            if (isSessionExpired(error)) {
+                this.sessions.delete(tabId)
+                return null
+            }
+            // Non-expiry errors (e.g. network) — assume session is still valid
+            return sessionHandle
+        }
+    }
+
     async openSession(tabId: string, properties?: Record<string, string>): Promise<string> {
         const existing = this.sessions.get(tabId)
         if (existing) {

@@ -231,8 +231,8 @@ export default function QueryCell({
             return
         }
 
-        // Use the eagerly-opened session, or wait for it if still connecting
-        let sessionHandle: string | null = connection.getSessionHandle(query.id)
+        // Validate the cached session handle (it may have expired during inactivity)
+        let sessionHandle: string | null = await connection.validateSession(query.id)
         if (!sessionHandle && sessionPromiseRef.current) {
             try {
                 sessionHandle = await sessionPromiseRef.current
