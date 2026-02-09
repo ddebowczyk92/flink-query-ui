@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { Box } from '@mui/material'
 
 const HANDLE_HEIGHT = 5
@@ -34,37 +34,34 @@ export default function ResizableSplitter({
     )
     const bottomHeight = totalHeight - HANDLE_HEIGHT - clampedTopHeight
 
-    const handlePointerDown = useCallback(
-        (e: React.PointerEvent) => {
-            e.preventDefault()
-            e.currentTarget.setPointerCapture(e.pointerId)
-            setIsDragging(true)
+    const handlePointerDown = (e: React.PointerEvent) => {
+        e.preventDefault()
+        e.currentTarget.setPointerCapture(e.pointerId)
+        setIsDragging(true)
 
-            const container = containerRef.current
-            if (!container) return
-            const containerTop = container.getBoundingClientRect().top
+        const container = containerRef.current
+        if (!container) return
+        const containerTop = container.getBoundingClientRect().top
 
-            const onPointerMove = (ev: PointerEvent) => {
-                const newTop = ev.clientY - containerTop
-                const clamped = Math.max(minTopHeight, Math.min(newTop, totalHeight - HANDLE_HEIGHT - minBottomHeight))
-                setTopHeight(clamped)
-            }
+        const onPointerMove = (ev: PointerEvent) => {
+            const newTop = ev.clientY - containerTop
+            const clamped = Math.max(minTopHeight, Math.min(newTop, totalHeight - HANDLE_HEIGHT - minBottomHeight))
+            setTopHeight(clamped)
+        }
 
-            const onPointerUp = () => {
-                setIsDragging(false)
-                document.removeEventListener('pointermove', onPointerMove)
-                document.removeEventListener('pointerup', onPointerUp)
-            }
+        const onPointerUp = () => {
+            setIsDragging(false)
+            document.removeEventListener('pointermove', onPointerMove)
+            document.removeEventListener('pointerup', onPointerUp)
+        }
 
-            document.addEventListener('pointermove', onPointerMove)
-            document.addEventListener('pointerup', onPointerUp)
-        },
-        [totalHeight, minTopHeight, minBottomHeight]
-    )
+        document.addEventListener('pointermove', onPointerMove)
+        document.addEventListener('pointerup', onPointerUp)
+    }
 
-    const handleDoubleClick = useCallback(() => {
+    const handleDoubleClick = () => {
         setTopHeight(null)
-    }, [])
+    }
 
     return (
         <Box ref={containerRef} sx={{ height: totalHeight, display: 'flex', flexDirection: 'column' }}>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Box, CircularProgress, IconButton, Toolbar, Tooltip, Typography, useMediaQuery } from '@mui/material'
 import PlayArrowIcon from '@mui/icons-material/PlayArrow'
 import StopIcon from '@mui/icons-material/Stop'
@@ -157,129 +157,120 @@ export default function QueryCell({
         return () => document.removeEventListener('visibilitychange', handleVisibility)
     }, [currentQuery.id, connectionManager])
 
-    const executeWithSession = useCallback(
-        async (connection: GatewayConnection, query: QueryInfo, sessionHandle: string) => {
-            const text = query.query?.trim()
-            if (!text) return
+    const executeWithSession = async (connection: GatewayConnection, query: QueryInfo, sessionHandle: string) => {
+        const text = query.query?.trim()
+        if (!text) return
 
-            const statements = splitStatements(text)
-            if (statements.length === 0) return
+        const statements = splitStatements(text)
+        if (statements.length === 0) return
 
-            // Cancel any in-flight runner before starting a new one
-            if (runnerRef.current && runnerRef.current.isRunning()) {
-                await runnerRef.current.cancel()
-            }
+        // Cancel any in-flight runner before starting a new one
+        if (runnerRef.current && runnerRef.current.isRunning()) {
+            await runnerRef.current.cancel()
+        }
 
-            // Reset state
-            setColumns([])
-            setRows([])
-            setError(null)
-            setWarning(null)
-            setJobId(null)
-            setIsQueryResult(true)
-            setStatementProgress(null)
+        // Reset state
+        setColumns([])
+        setRows([])
+        setError(null)
+        setWarning(null)
+        setJobId(null)
+        setIsQueryResult(true)
+        setStatementProgress(null)
 
-            const callbacks: QueryRunnerCallbacks = {
-                onStateChange: (state) => setQueryState(state),
-                onColumnsReceived: (cols) => setColumns(cols),
-                onRowsReceived: (allRows) => setRows([...allRows]),
-                onError: (msg) => setError(msg),
-                onWarning: (msg) => setWarning(msg),
-                onJobId: (id) => setJobId(id),
-                onIsQueryResult: (isQuery) => setIsQueryResult(isQuery),
-                onStatementProgress: (current, total) => setStatementProgress({ current, total }),
-                onSessionExpired: async () => {
-                    if (retryCountRef.current >= MAX_SESSION_RETRIES) {
-                        setError('Session expired. Please try again.')
-                        setQueryState('FAILED')
-                        setSessionState('error')
-                        setSessionError('Session expired')
-                        return
-                    }
-                    retryCountRef.current++
-                    try {
-                        setSessionState('connecting')
-                        const newHandle = await connection.recreateSession(query.id)
-                        setSessionState('connected')
-                        setSessionError(null)
-                        await executeWithSession(connection, query, newHandle)
-                    } catch (err) {
-                        const msg = getErrorMessage(err)
-                        setError(msg)
-                        setQueryState('FAILED')
-                        setSessionState('error')
-                        setSessionError(msg)
-                    }
-                },
-            }
-
-            const runner = new FlinkQueryRunner(connection.client, sessionHandle, callbacks)
-            runnerRef.current = runner
-            await runner.executeAll(statements)
-        },
-        []
-    )
-
-    const handleExecute = useCallback(
-        async (statementOverride?: string) => {
-            const connection = connectionManager.getActiveConnection()
-            if (!connection) {
-                setError('No gateway connection selected. Click the connection icon to add one.')
-                return
-            }
-
-            const query = queries.getCurrentQuery()
-            const statement = statementOverride?.trim() || query.query?.trim()
-            if (!statement) {
-                setError('No SQL statement to execute')
-                return
-            }
-
-            // Use the eagerly-opened session, or wait for it if still connecting
-            let sessionHandle: string | null = connection.getSessionHandle(query.id)
-            if (!sessionHandle && sessionPromiseRef.current) {
-                try {
-                    sessionHandle = await sessionPromiseRef.current
-                } catch {
-                    // Fall through to manual open below
-                }
-            }
-            if (!sessionHandle) {
-                try {
-                    setSessionState('connecting')
-                    sessionHandle = await connection.openSession(query.id)
-                    setSessionState('connected')
-                    setSessionError(null)
-                } catch (err) {
-                    const msg = getErrorMessage(err)
+        const callbacks: QueryRunnerCallbacks = {
+            onStateChange: (state) => setQueryState(state),
+            onColumnsReceived: (cols) => setColumns(cols),
+            onRowsReceived: (allRows) => setRows([...allRows]),
+            onError: (msg) => setError(msg),
+            onWarning: (msg) => setWarning(msg),
+            onJobId: (id) => setJobId(id),
+            onIsQueryResult: (isQuery) => setIsQueryResult(isQuery),
+            onStatementProgress: (current, total) => setStatementProgress({ current, total }),
+            onSessionExpired: async () => {
+                if (retryCountRef.current >= MAX_SESSION_RETRIES) {
+                    setError('Session expired. Please try again.')
+                    setQueryState('FAILED')
                     setSessionState('error')
-                    setSessionError(msg)
-                    setError(msg)
+                    setSessionError('Session expired')
                     return
                 }
+                retryCountRef.current++
+                try {
+                    setSessionState('connecting')
+                    const newHandle = await connection.recreateSession(query.id)
+                    setSessionState('connected')
+                    setSessionError(null)
+                    await executeWithSession(connection, query, newHandle)
+                } catch (err) {
+                    const msg = getErrorMessage(err)
+                    setError(msg)
+                    setQueryState('FAILED')
+                    setSessionState('error')
+                    setSessionError(msg)
+                }
+            },
+        }
+
+        const runner = new FlinkQueryRunner(connection.client, sessionHandle, callbacks)
+        runnerRef.current = runner
+        await runner.executeAll(statements)
+    }
+
+    const handleExecute = async (statementOverride?: string) => {
+        const connection = connectionManager.getActiveConnection()
+        if (!connection) {
+            setError('No gateway connection selected. Click the connection icon to add one.')
+            return
+        }
+
+        const query = queries.getCurrentQuery()
+        const statement = statementOverride?.trim() || query.query?.trim()
+        if (!statement) {
+            setError('No SQL statement to execute')
+            return
+        }
+
+        // Use the eagerly-opened session, or wait for it if still connecting
+        let sessionHandle: string | null = connection.getSessionHandle(query.id)
+        if (!sessionHandle && sessionPromiseRef.current) {
+            try {
+                sessionHandle = await sessionPromiseRef.current
+            } catch {
+                // Fall through to manual open below
             }
+        }
+        if (!sessionHandle) {
+            try {
+                setSessionState('connecting')
+                sessionHandle = await connection.openSession(query.id)
+                setSessionState('connected')
+                setSessionError(null)
+            } catch (err) {
+                const msg = getErrorMessage(err)
+                setSessionState('error')
+                setSessionError(msg)
+                setError(msg)
+                return
+            }
+        }
 
-            retryCountRef.current = 0
-            await executeWithSession(connection, { ...query, query: statement }, sessionHandle)
-        },
-        [connectionManager, queries, executeWithSession]
-    )
+        retryCountRef.current = 0
+        await executeWithSession(connection, { ...query, query: statement }, sessionHandle)
+    }
 
-    const handleCancel = useCallback(async () => {
+    const handleCancel = async () => {
         if (runnerRef.current) {
             await runnerRef.current.cancel()
         }
-    }, [])
+    }
 
-    const handleTabClose = useCallback(
-        (tabId: string) => {
-            const connection = connectionManager.getActiveConnection()
-            if (connection) {
-                connection.closeSession(tabId)
-            }
-        },
-        [connectionManager]
-    )
+    const handleTabClose = (tabId: string) => {
+        const connection = connectionManager.getActiveConnection()
+        if (connection) {
+            connection.closeSession(tabId)
+        }
+    }
 
     const isRunning = queryState === 'SUBMITTING' || queryState === 'RUNNING' || queryState === 'CANCELLING'
     const activeConnection = connectionManager.getActiveConnection()

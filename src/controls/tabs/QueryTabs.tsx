@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Box, IconButton, InputBase, Tab, Tabs as MuiTabs } from '@mui/material'
 import AddIcon from '@mui/icons-material/Add'
 import CloseIcon from '@mui/icons-material/Close'
@@ -42,10 +42,10 @@ function EditableTabLabel({
         }
     }, [isEditing, tab.title])
 
-    const commit = useCallback(() => {
+    const commit = () => {
         const trimmed = editValue.trim()
         onFinishEdit(trimmed || tab.title)
-    }, [editValue, tab.title, onFinishEdit])
+    }
 
     if (isEditing) {
         return (
@@ -111,15 +111,12 @@ export default function QueryTabs({
 }: QueryTabsProps) {
     const [editingTabId, setEditingTabId] = useState<string | null>(null)
 
-    const handleFinishEdit = useCallback(
-        (tabId: string, newTitle: string) => {
-            setEditingTabId(null)
-            if (onTabRename) {
-                onTabRename(tabId, newTitle)
-            }
-        },
-        [onTabRename]
-    )
+    const handleFinishEdit = (tabId: string, newTitle: string) => {
+        setEditingTabId(null)
+        if (onTabRename) {
+            onTabRename(tabId, newTitle)
+        }
+    }
 
     return (
         <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: 1, borderColor: 'divider' }}>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Alert, AlertTitle, Box, Divider, IconButton, LinearProgress, TextField, Typography } from '@mui/material'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import RefreshIcon from '@mui/icons-material/Refresh'
@@ -58,7 +58,7 @@ const CatalogViewer: React.FC<CatalogViewerProps> = ({
         }
     }, [debouncedFilterText, catalogs, schemaProvider])
 
-    const loadCatalogs = useCallback(async () => {
+    const loadCatalogs = async () => {
         const connection = connectionManager.getActiveConnection()
         if (!connection) {
             setErrorMessage('No active connection. Click the connection icon to add one.')
@@ -84,7 +84,7 @@ const CatalogViewer: React.FC<CatalogViewerProps> = ({
             setErrorMessage(getErrorMessage(error))
             setIsLoading(false)
         }
-    }, [connectionManager, schemaProvider])
+    }
 
     // Load catalogs when connection changes
     useEffect(() => {
@@ -99,7 +99,7 @@ const CatalogViewer: React.FC<CatalogViewerProps> = ({
         }
         connectionManager.addChangeListener(handler)
         return () => connectionManager.removeChangeListener(handler)
-    }, [connectionManager, loadCatalogs])
+    }, [connectionManager]) // eslint-disable-line react-hooks/exhaustive-deps
 
     // Initial load
     useEffect(() => {

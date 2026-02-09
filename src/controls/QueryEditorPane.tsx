@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { Box } from '@mui/material'
 import Editor, { OnMount } from '@monaco-editor/react'
 import * as monaco from 'monaco-editor'
@@ -40,87 +40,72 @@ export default function QueryEditorPane({
 
     const tabs = queries.getTabs()
 
-    const handleEditorMount: OnMount = useCallback(
-        (editor) => {
-            editorRef.current = editor
+    const handleEditorMount: OnMount = (editor) => {
+        editorRef.current = editor
 
-            // Track selection changes so the selected text survives focus loss.
-            // Only update when the editor has focus — clicking the Play button
-            // causes a blur which collapses the selection, and we want to keep
-            // the last user-made selection available.
-            editor.onDidChangeCursorSelection((e) => {
-                if (!editor.hasTextFocus()) return
-                const selection = e.selection
-                if (selection && !selection.isEmpty()) {
-                    selectedTextRef.current = editor.getModel()?.getValueInRange(selection)?.trim() || undefined
-                } else {
-                    selectedTextRef.current = undefined
-                }
-            })
-
-            if (editorHandleRef) {
-                editorHandleRef.current = {
-                    getSelectedText: () => selectedTextRef.current,
-                }
+        // Track selection changes so the selected text survives focus loss.
+        // Only update when the editor has focus — clicking the Play button
+        // causes a blur which collapses the selection, and we want to keep
+        // the last user-made selection available.
+        editor.onDidChangeCursorSelection((e) => {
+            if (!editor.hasTextFocus()) return
+            const selection = e.selection
+            if (selection && !selection.isEmpty()) {
+                selectedTextRef.current = editor.getModel()?.getValueInRange(selection)?.trim() || undefined
+            } else {
+                selectedTextRef.current = undefined
             }
+        })
 
-            // Ctrl+Enter / Cmd+Enter to execute — if text is selected, execute only the selection
-            editor.addAction({
-                id: 'execute-query',
-                label: 'Execute Query',
-                keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
-                run: () => {
-                    onExecuteRef.current(selectedTextRef.current)
-                },
-            })
-
-            // Escape to cancel a running query
-            editor.addAction({
-                id: 'cancel-query',
-                label: 'Cancel Query',
-                keybindings: [monaco.KeyCode.Escape],
-                run: () => onCancelRef.current(),
-            })
-        },
-        [editorHandleRef]
-    )
-
-    const handleEditorChange = useCallback(
-        (value: string | undefined) => {
-            if (value !== undefined) {
-                queries.updateQuery(currentQuery.id, { query: value }, true)
+        if (editorHandleRef) {
+            editorHandleRef.current = {
+                getSelectedText: () => selectedTextRef.current,
             }
-        },
-        [queries, currentQuery.id]
-    )
+        }
 
-    const handleTabChange = useCallback(
-        (tabId: string) => {
-            queries.setCurrentQuery(tabId)
-        },
-        [queries]
-    )
+        // Ctrl+Enter / Cmd+Enter to execute — if text is selected, execute only the selection
+        editor.addAction({
+            id: 'execute-query',
+            label: 'Execute Query',
+            keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
+            run: () => {
+                onExecuteRef.current(selectedTextRef.current)
+            },
+        })
 
-    const handleTabAdd = useCallback(() => {
+        // Escape to cancel a running query
+        editor.addAction({
+            id: 'cancel-query',
+            label: 'Cancel Query',
+            keybindings: [monaco.KeyCode.Escape],
+            run: () => onCancelRef.current(),
+        })
+    }
+
+    const handleEditorChange = (value: string | undefined) => {
+        if (value !== undefined) {
+            queries.updateQuery(currentQuery.id, { query: value }, true)
+        }
+    }
+
+    const handleTabChange = (tabId: string) => {
+        queries.setCurrentQuery(tabId)
+    }
+
+    const handleTabAdd = () => {
         queries.addTab()
-    }, [queries])
+    }
 
-    const handleTabClose = useCallback(
-        (tabId: string) => {
-            if (externalTabClose) {
-                externalTabClose(tabId)
-            }
-            queries.deleteQuery(tabId)
-        },
-        [queries, externalTabClose]
-    )
+    const handleTabClose = (tabId: string) => {
+        if (externalTabClose) {
+            externalTabClose(tabId)
+        }
+        queries.deleteQuery(tabId)
+    }
 
-    const handleTabRename = useCallback(
-        (tabId: string, newTitle: string) => {
-            queries.updateQuery(tabId, { title: newTitle })
-        },
-        [queries]
-    )
+    const handleTabRename = (tabId: string, newTitle: string) => {
+        queries.updateQuery(tabId, { title: newTitle })
+    }
 
     const tabBarHeight = 36
     const editorHeight = height - tabBarHeight

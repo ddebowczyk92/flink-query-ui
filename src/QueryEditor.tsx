@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { Box, Drawer } from '@mui/material'
 import ConnectionManager from './schema/ConnectionManager'
 import Queries from './schema/Queries'
@@ -29,28 +29,25 @@ export default function QueryEditor({ height }: IQueryEditor) {
         return () => connectionManager.removeChangeListener(handler)
     }, [connectionManager])
 
-    const handleToggleDrawer = useCallback(() => {
+    const handleToggleDrawer = () => {
         setDrawerOpen((prev) => !prev)
-    }, [])
+    }
 
-    const handleOpenConnectionDialog = useCallback(() => {
+    const handleOpenConnectionDialog = () => {
         setConnectionDialogOpen(true)
-    }, [])
+    }
 
-    const handleCloseConnectionDialog = useCallback(() => {
+    const handleCloseConnectionDialog = () => {
         setConnectionDialogOpen(false)
-    }, [])
+    }
 
-    const handleGenerateQuery = useCallback(
-        (query: string, _catalog?: string, _schema?: string) => {
-            if (query) {
-                const current = queries.getCurrentQuery()
-                const existing = current.query?.trim() ? current.query + '\n' : ''
-                queries.updateQuery(current.id, { query: existing + query })
-            }
-        },
-        [queries]
-    )
+    const handleGenerateQuery = (query: string, _catalog?: string, _schema?: string) => {
+        if (query) {
+            const current = queries.getCurrentQuery()
+            const existing = current.query?.trim() ? current.query + '\n' : ''
+            queries.updateQuery(current.id, { query: existing + query })
+        }
+    }
 
     return (
         <Box sx={{ display: 'flex', height, position: 'relative', overflow: 'hidden' }}>
